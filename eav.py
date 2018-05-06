@@ -5,6 +5,8 @@ from sqlalchemy import Integer, String, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, Session, backref
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm.collections import attribute_mapped_collection
+
 
 
 Base = declarative_base()
@@ -34,16 +36,27 @@ class Value(Base):
                 'Instance',
                 backref=backref(
                     'instance_attributes',
-                    cascade="all, delete-orphan"
+                    cascade="all, delete-orphan",
                     ),
                 )
 
-    attribute = relationship('Attribute')
+    attribute = relationship(
+                'Attribute',
+                backref='value',
+                )
+
 
     def __init__(self, value, attribute=None, instance=None):
         self.instance = instance
         self.attribute = attribute
         self.value = value
+
+    def __repr__(self):
+        return "<{clsname}({value!r})>"\
+                .format(
+                clsname=self.__class__.__name__,
+                value=self.value,
+                )
 
 
 class Instance(Base):
@@ -54,22 +67,22 @@ class Instance(Base):
 
     type = Column(String(64), nullable=False)
 
-    name = Column(String(64), nullable=False, unique=True)
-
     attributes = association_proxy(
                     'instance_attributes',
                     'attribute',
                     )
 
-    def __init__(self, name):
-        self.name = name
+    __mapper_args__ = {
+        'polymorphic_identity' : 'instance',
+        'polymorphic_on' : type,
+    }
 
 
     def __repr__(self):
-        return"<{clsname}(name={name!r})>"\
+        return"<{clsname}(id={id!r})>"\
                 .format(
                     clsname=self.type,
-                    name=self.name,
+                    id=self.id,
                     )
 
 
@@ -79,18 +92,18 @@ class Attribute(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    name = Column(String(64), nullable=False)
+    key = Column(String(64), nullable=False)
 
     entity_type = Column(String(64))
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, key):
+        self.key = key
 
     def __repr__(self):
-        return "{clsname}(name={name!r})"\
+        return "{clsname}(key={key!r})"\
                 .format(
                     clsname=self.__class__.__name__,
-                    name=self.name,
+                    key=self.key,
                     )
 
 
