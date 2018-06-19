@@ -27,18 +27,15 @@ class PolymorphicMixin(object):
 
 class AttributeMixin(object):
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String(32), nullable=False)
+    name = Column(String(32), primary_key=True)
 
     @declared_attr
     def entity_id(class_):
-        return Column(Integer, ForeignKey('entity.id'))
-
-    @declared_attr
-    def __table_args__(class_):
-        return (
-            UniqueConstraint('name', 'entity_id'),
-            )
+        return Column(
+                Integer,
+                ForeignKey('entity.id', ondelete='CASCADE'),
+                primary_key=True,
+                )
 
     def __repr__(self):
         return "{classname}({value!r})"\
@@ -116,6 +113,7 @@ def build_attribute_table(data_type):
         relationship(classname,
             backref=f'_ref_{classname.lower()}',
             collection_class=attribute_mapped_collection('name'),
+            cascade='all, delete-orphan',
             )
         )
 
@@ -141,6 +139,10 @@ class EntityAttributeDescriptor(object):
         self.name = name
 
     def __get__(self, object_, class_):
+        if object_ is None:
+            raise AttributeError(f'Must be called from {class_.__qualname__}'
+                                  ' instance')
+
         try:
             attrs = getattr(object_, self.rel)
             return attrs[self.name].value
@@ -148,7 +150,12 @@ class EntityAttributeDescriptor(object):
             return None
 
     def __set__(self, object_, value):
-        if not isinstance(value, self.python_type):
+        if object_ is None:
+            raise AttributeError(f'Must be called from {class_.__qualname__}'
+                                  ' instance')
+
+        if value is not None and \
+           not isinstance(value, self.python_type):
             raise TypeError(f'{self.name} must be of type {self.python_type}')
         try:
             attrs = getattr(object_, self.rel)
@@ -163,8 +170,5 @@ class EntityAttributeDescriptor(object):
                 del(attrs[self.name])
 
     def __delete__(self, object_):
-        raise AttributeError(
-                f'`del()` action not allowed on attribute {self.name}'
-                )
-
+        self.__set__(object_, None)
 
