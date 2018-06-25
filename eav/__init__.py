@@ -3,7 +3,7 @@
 import sqlalchemy as _sa
 from keyword import iskeyword as _iskeyword
 from inspect import isclass as _isclass
-from .models import EntityAttributeDescriptor as Attribute
+from .attr import AttributeDescriptor as Attribute
 from .models import Entity, PolymorphicMixin
 from .models import build_attribute_table
 from .common import Base

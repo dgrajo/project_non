@@ -91,7 +91,7 @@ def build_attribute_table(data_type):
         if not issubclass(data_type, sqlalchemy.sql.type_api.TypeEngine):
             raise TypeError(f'{data_type} is not a valid sqlalchemy data type')
 
-    if not isinstance(data_type, sqlalchemy.sql.type_api.TypeEngine):
+    elif not isinstance(data_type, sqlalchemy.sql.type_api.TypeEngine):
         raise TypeError(f'{data_type} is not a valid sqlalchemy data type')
 
     classname = table_class_name(data_type)
@@ -121,54 +121,4 @@ def build_attribute_table(data_type):
     cache[classname] = table
 
     return table
-
-
-class EntityAttributeDescriptor(object):
-    """Accessor descriptor to the collection of mapped attribute
-    in the Entity class
-    """
-
-    __slots__ = ['table', 'python_type', 'rel', 'name']
-
-    def __init__(self, data_type):
-        self.table = build_attribute_table(data_type)
-        self.python_type = self.table.value.type.python_type
-        self.rel = f'_rel_{self.table.__tablename__}'
-
-    def __set_name__(self, class_, name):
-        self.name = name
-
-    def __get__(self, object_, class_):
-        if object_ is None:
-            raise AttributeError(f'Must be called from {class_.__qualname__}'
-                                  ' instance')
-
-        try:
-            attrs = getattr(object_, self.rel)
-            return attrs[self.name].value
-        except KeyError as e:
-            return None
-
-    def __set__(self, object_, value):
-        if object_ is None:
-            raise AttributeError(f'Must be called from {class_.__qualname__}'
-                                  ' instance')
-
-        if value is not None and \
-           not isinstance(value, self.python_type):
-            raise TypeError(f'{self.name} must be of type {self.python_type}')
-        try:
-            attrs = getattr(object_, self.rel)
-            attr = attrs[self.name]
-        except KeyError as e:
-            if value is not None:
-                attrs[self.name] = self.table(name=self.name, value=value)
-        else:
-            if value is not None:
-                attr.value = value
-            else:
-                del(attrs[self.name])
-
-    def __delete__(self, object_):
-        self.__set__(object_, None)
 
